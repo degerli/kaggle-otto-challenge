@@ -1,5 +1,6 @@
 import com.google.common.base.Joiner;
 import weka.classifiers.Classifier;
+import weka.classifiers.Evaluation;
 import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.SerializationHelper;
@@ -10,6 +11,7 @@ import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 
@@ -27,29 +29,22 @@ public class Main {
 
         List<MyClassifier> classifiers = new ArrayList<>();
 
-        classifiers.add(Repo.Classifiers.LOG_RF_SMO);
+        classifiers.add(Repo.Classifiers.EnsembleMetaLogisticWithSvmNormKernAndRandomForest);
 
-        try {
+        //ReadInstances train instances
+        Instances trainData = ReadInstances(TrainFile);
 
-            //Read train instances
-            DataSource trainSource = new DataSource(TrainFile);
-            Instances trainData = trainSource.getDataSet();
+        //ReadInstances test instances
+        Instances testData = ReadInstances(TestFile);
 
-            //Read test instances
-            DataSource testSource = new DataSource(TestFile);
-            Instances testData = testSource.getDataSet();
-
-            //Set the last feature as the class value
-            trainData.setClassIndex(trainData.numAttributes() - 1);
-            testData.setClassIndex(testData.numAttributes() - 1);
-
-            //Produce labeled test data for each classifier
-            for (MyClassifier classifier : classifiers) {
+        //Produce labeled test data for each classifier
+        for (MyClassifier classifier : classifiers) {
+            try {
                 BuildModelAndLabelTestData(classifier.classifier, classifier.Id, trainData, testData);
+            } catch (Exception e) {
+                System.out.println("Something unexpected has happened with " + classifier.Id + ". Continuing with the next classifier.");
+                e.printStackTrace();
             }
-
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 
@@ -58,14 +53,21 @@ public class Main {
      */
     static void BuildModelAndLabelTestData(Classifier classifier, String modelId, Instances train, Instances test) throws Exception {
 
-        //build model with training data
+        System.out.println("===[ " + modelId + " ]====================================");
+
+        System.out.println("Training classifier...\n");
         classifier.buildClassifier(train);
 
-        //Save model
+        System.out.println("Saving model...\n");
         String modelFile = ModelDir + modelId + ".model";
         SerializationHelper.write(modelFile, classifier);
 
-        //Create kaggle CSV file for results
+        System.out.println("Evaluating model with 3-fold CV...\n");
+        Evaluation eval = new Evaluation(train);
+        eval.crossValidateModel(classifier, train, 3, new Random(1));
+        System.out.println(eval.toSummaryString("\nResults\n======\n", false));
+
+        System.out.println("Creating result file for test instances...\n");
         BufferedWriter writer = new BufferedWriter(new FileWriter(ResultDir + modelId + ".csv"));
         writer.write("id,Class_1,Class_2,Class_3,Class_4,Class_5,Class_6,Class_7,Class_8,Class_9");
         writer.newLine();
@@ -88,6 +90,21 @@ public class Main {
         //Close the file
         writer.flush();
         writer.close();
+
+        System.out.println("====================================================");
+    }
+
+    static Instances ReadInstances(String path) {
+        try {
+            DataSource source = new DataSource(path);
+            Instances instances = source.getDataSet();
+            instances.setClassIndex(instances.numAttributes() - 1);
+            return instances;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return null;
     }
 
     /**

@@ -1,4 +1,5 @@
 import weka.classifiers.Classifier;
+import weka.classifiers.bayes.NaiveBayes;
 import weka.classifiers.functions.Logistic;
 import weka.classifiers.functions.SMO;
 import weka.classifiers.functions.supportVector.NormalizedPolyKernel;
@@ -9,27 +10,33 @@ public enum Repo {
 
     Classifiers;
 
-    public final MyClassifier RANDOM_FOREST;
-    public final MyClassifier SMO_NORMALIZED_KERNEL;
-    public final MyClassifier LOGISTIC;
-    public final MyClassifier LOG_RF_SMO;
+    public final MyClassifier RandomForest;
+    public final MyClassifier SvmWithNormalizedPolyKernel;
+    public final MyClassifier SvmDefault;
+    public final MyClassifier LogisticRegression;
+    public final MyClassifier EnsembleMetaLogisticWithSvmNormKernAndRandomForest;
+    public final MyClassifier NaiveBayes;
 
 
     Repo() {
 
+        SvmDefault = new MyClassifier(new SMO(), "smo");
+
+        NaiveBayes = new MyClassifier(new NaiveBayes(), "nb");
+
         RandomForest rf = new RandomForest();
-        RANDOM_FOREST = new MyClassifier(rf, "rf");
+        RandomForest = new MyClassifier(rf, "rf");
 
-        SMO smo = new SMO();
-        smo.setKernel(new NormalizedPolyKernel());
-        SMO_NORMALIZED_KERNEL = new MyClassifier(smo, "smo_norm_kern");
+        SMO smoNormalizedKernel = new SMO();
+        smoNormalizedKernel.setKernel(new NormalizedPolyKernel());
+        SvmWithNormalizedPolyKernel = new MyClassifier(smoNormalizedKernel, "SvmWithNormalizedPolyKernel");
 
-        LOGISTIC = new MyClassifier(new Logistic(), "logit");
+        LogisticRegression = new MyClassifier(new Logistic(), "LogisticRegression");
 
         Stacking stacking = new Stacking();
         stacking.setMetaClassifier(new Logistic());
-        stacking.setClassifiers(new Classifier[]{rf, smo});
-        LOG_RF_SMO = new MyClassifier(stacking, "logit-rf-smo");
+        stacking.setClassifiers(new Classifier[]{rf, smoNormalizedKernel});
+        EnsembleMetaLogisticWithSvmNormKernAndRandomForest = new MyClassifier(stacking, "EnsembleMetaLogisticWithSvmNormKernAndRandomForest");
 
 
     }
